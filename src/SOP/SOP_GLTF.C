@@ -1,5 +1,5 @@
 /*
- * Copyright (c) COPYRIGHTYEAR
+ * Copyright (c) 2020
  *	Side Effects Software Inc.  All rights reserved.
  *
  * Redistribution and use of Houdini Development Kit samples in source and
@@ -863,3 +863,4 @@ SOP_GLTF_Loader::getGeoOptions() const
     options.pointConsolidationDistance = myOptions.pointConsolidationDistance;
     return options;
 }
+//
