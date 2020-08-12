@@ -5,31 +5,38 @@ namespace and node operator names so that it can be used alongside the default
 Houdini glTF libarries.
 
 Optionally, you can modify the custom library namespace and node operator names
-in CustomGLTF.global.
+in src/CustomGLTF.global.
 
 This project has been setup to build with make. See
 https://www.sidefx.com/docs/hdk/_h_d_k__intro__compiling.html#HDK_Intro_Compiling_Makefiles
+
+Requires Houdini 18.0.552 or newer. Does not work with earlier versions of Houdini.
 
 -------------------------------------------------------------------------------
 Libraries:
 -------------------------------------------------------------------------------
 
-- GLTF/
+- src/GLTF/
     Source code for the core glTF import and export library which contains most 
     of the parsing and writing code. The generated libCustomGLTF.so/.dll should be
-    placed in a path pointed to by LD_LIBRARY_PATH or PATH (on Windows).
+    placed in a path pointed to by LD_LIBRARY_PATH (Linux), or DYLD_LIBRARY_PATH
+    (macOS) or PATH (Windows).
 
-- SOP/
+- src/SOP/
     Source code for the glTF SOP importer node. The generated SOP_CustomGLTF.so/.dll
-    should be placed in %HOME%/houdiniX.X/dso or a path pointed to by HOUDINI_DSO_PATH.
+    should be placed in $HOME/houdiniX.X/dso or a path pointed to by HOUDINI_DSO_PATH.
 
-- ROP/
+- src/ROP/
     Source code for the glTF ROP exporter node. The generated ROP_CustomGLTF.so/.dll
-    should be placed in %HOME%/houdiniX.X/dso or a path pointed to by HOUDINI_DSO_PATH.
+    should be placed in $HOME/houdiniX.X/dso or a path pointed to by HOUDINI_DSO_PATH.
 
-- HOM/
+- src/HOM/
     Source code for the glTF HOM module. The generated HOM_CustomGLTF.so/.dll
-    should be placed in %HOME%/houdiniX.X/dso or a path pointed to by HOUDINI_DSO_PATH.
+    should be placed in $HOME/houdiniX.X/dso or a path pointed to by HOUDINI_DSO_PATH.
+
+- gltf_hierarchy.hda/
+    The Object node to load in a glTF scene hierarchy, as a Houdini Digital Asset.
+    This should be placed $HOME/houdiniX.X/otls.
 
 -------------------------------------------------------------------------------
 Building the glTF libraries on Windows using Cygwin:
@@ -45,10 +52,10 @@ source the Houdini environment:
 cd C:/Program\ Files/Side\ Effects\ Software/Houdini\ X.Y.ZZZ
 source ./houdini_setup
 
-Then set the MSVC dir.
+Then set the MSVC dir (change to your version of MSVC).
 export MSVCDir="C:/Program Files (x86)/Microsoft Visual Studio/2017/Professional/VC/Tools/MSVC/14.16.27023"
 
-Then go to the glTF source folder.
+Then go to the HoudiniGLTF/src/ folder.
 
 - To build all libs: make WINDOWS=1 all
 
@@ -60,9 +67,10 @@ Note that libCustomGLTF.dll must be built first. The other libs depend on it.
 
 Once the libraries are built, add the location of libCustomGLTF.dll to PATH:
 
-set PATH=%PATH%;C:\customgltf\src\GLTF
+set PATH=%PATH%;C:\HoudiniGLTF\src\GLTF
 
-Then copy over the other built .dlls to %HOME%/houdiniX.X/dso (i.e. Houdini home directory).
+Then copy over the built SOP, ROP, and HOM .dlls to %HOME%/houdiniX.X/dso 
+(i.e. Houdini home directory).
 
 -------------------------------------------------------------------------------
 Building the glTF libraries on Linux or macOS:
@@ -71,10 +79,10 @@ Building the glTF libraries on Linux or macOS:
 First, make sure the HFS environment variable is properly set to your Houdini 
 install directory.
 
-    Linux: export HFS=/opt/hfs18.0.300
-    macOS: export HFS=/Applications/Houdini/Houdini18.5.301/Framedworks/Houdini.framework/Versions/18.5/Resources
+    Linux: export HFS=/opt/hfsX.Y.ZZZ
+    macOS: export HFS=/Applications/Houdini/HoudiniX.Y.ZZZ/Framedworks/Houdini.framework/Versions/X.Y/Resources
 
-Then go to the glTF source folder.
+Then go to the HoudiniGLTF/src/ folder.
 
     Linux: make all
     macOS: make MBSD=1 all
@@ -83,10 +91,10 @@ Note that libCustomGLTF.so/.dylib must be built first. The other libs depend on 
 
 Once the libraries are built, add the location of libCustomGLTF.so/.dylib to LD_LIBRARY_PATH:
 
-     Linux: export LD_LIBRARY_PATH=/dev/customgltf/src/GLTF
-     macOS: export DYLD_LIBRARY_PATH=/dev/customgltf/src/GLTF
+     Linux: export LD_LIBRARY_PATH=/dev/HoudiniGLTF/src/GLTF
+     macOS: export DYLD_LIBRARY_PATH=/dev/HoudiniGLTF/src/GLTF
 
-Then copy over the other built .so/.dylib libs to %HOME%/houdiniX.X/dso 
+Then copy over the built SOP, ROP, and HOM .so/.dylib libs to $HOME/houdiniX.X/dso 
 (i.e. Houdini home directory).
 
-On macOS, Houdini home directory is located at ~/Library/Preferences/houdini/X.X/
+On macOS, Houdini home directory is located at ~/Library/Preferences/houdini/X.Y/
