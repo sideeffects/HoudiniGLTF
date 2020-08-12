@@ -1,0 +1,603 @@
+import json
+import os
+import hou
+import string
+import struct
+import tempfile
+import base64
+import _gltf_hom_extensions as _gltf
+
+try:
+    from hou import ui
+except:
+    ui = None
+
+
+##############################################
+# General utils
+
+# Throw an error and exit if we give it an invalid dir
+
+# (This is taken from Alembic Archive exporter)
+_sanitizeTable = None
+
+def _sanitizeName(name):
+    def valid(i):
+        ch = chr(i)
+        if ch.isalnum():
+            return ch
+        return '_'
+    global _sanitizeTable
+    if not _sanitizeTable:
+        letters = ''.join([string.letters, string.digits, '_'])
+        # Full alphabet
+        alpha = ''.join(map(chr, range(256)))
+        xlate = ''.join(map(valid, range(256)))
+        _sanitizeTable = string.maketrans(alpha, xlate)
+    name = string.translate(name, _sanitizeTable)
+    if name[0].isdigit():
+        name = '_' + name
+    return name
+
+###############################################
+# Parm utils
+
+def _setNodeName(node, name):
+    if len(name) == 0:
+        return
+    sanitized_name = _sanitizeName(name)
+    node.setName(sanitized_name, True)
+    
+def _setParmValue(node, parmname, value):
+    parm = node.parm(parmname)
+    if parm:
+        parm.set(value)
+
+##################################################
+
+def _new_geonode(parent, name, filename, mesh_id, locked, custom_attribs, promote_point_attrs, point_consolidation_dist):
+    geo = parent.createNode("geo")
+    gltf_sop = geo.createNode("gltf")
+    _setNodeName(gltf_sop, name)
+    
+    _setParmValue(gltf_sop, "filename", filename)
+    _setParmValue(gltf_sop, "loadby", "mesh")
+    _setParmValue(gltf_sop, "meshid", mesh_id)
+    _setParmValue(gltf_sop, "materialassigns", True)
+    _setParmValue(gltf_sop, "usecustomattribs", custom_attribs)
+    _setParmValue(gltf_sop, "promotepointattrs", promote_point_attrs)
+    _setParmValue(gltf_sop, "pointconsolidatedist", point_consolidation_dist)
+    gltf_sop.setHardLocked(locked)
+    
+    return geo, gltf_sop
+    
+def _new_matnet(parent, name):
+    matnet = parent.createNode("matnet")
+    _setNodeName(matnet, name)
+    return matnet
+    
+def _new_pbr_node(parent):
+    pbr_shadernode = parent.createNode('principledshader') 
+    
+    return pbr_shadernode 
+    
+def _get_suffix_from_mimetype(mimetype):
+    if mimetype == "image/jpeg":
+        return ".jpg"
+    elif mimetype == "image/png":
+        return ".png"
+    else:
+        raise Exception("Invalid image mimeType!")
+        
+# Creates a new null node based on the parameters given in "node"
+# The node has no transform if "node" contains no TRS or affine
+# matrix translation.
+def set_transform(node, gltf_node):
+    if "matrix" in gltf_node:
+        matrix = hou.Matrix4(gltf_node["matrix"])
+        node.setParmTransform(matrix)
+        node.setParmTransform(matrix)
+    
+    if "translation" in gltf_node:
+        translation = hou.Vector3(gltf_node["translation"])
+        node.parmTuple("t").set(translation)
+    
+    if "rotation" in gltf_node:
+        rotation = hou.Quaternion(gltf_node["rotation"])
+        
+        node.parmTuple("r").set(rotation.extractEulerRotates())
+    
+    if "scale" in gltf_node:
+        scale = hou.Vector3(gltf_node["scale"])
+        node.parmTuple("s").set(scale)
+    
+    return node
+    
+##################################################    
+class GLTF_Scene:
+    def __init__(self, root_node, filename, json_obj, is_glb, settings):
+        self.json_obj = json_obj
+        self.filename = filename
+        file_head, file_tail = os.path.split(filename)
+        file_name, file_ext = os.path.splitext(file_tail)
+        self.file_tail = file_name
+        self.root_node = root_node
+        self.base_folder = os.path.dirname(filename)
+        self.material_cache = dict()
+        self.image_cache = dict()
+        self.is_glb = is_glb
+        self.tmp_img_ctr = 0
+        self.buffer_data = [None]
+        self.settings = settings
+        
+        # The number of times a name has appearaed
+        self.name_set = dict()
+        if "materials" in json_obj:
+            for material in json_obj["materials"]:
+                if not "name" in material:
+                    continue
+                name = material["name"]
+                appearances = 0
+                if name in self.name_set:
+                    appearances = self.name_set[name]
+                self.name_set[name] = appearances + 1
+                    
+        if "buffers" in json_obj:
+            self.buffer_data = [None] * len(json_obj["buffers"])
+        if "nodes" in json_obj:
+            self.node_hasgeo = [None] * len(json_obj["nodes"])
+            
+    def determine_nodes_with_geo(self):
+        if not "nodes" in self.json_obj:
+            return
+        
+        def recurs(node, idx):
+            if self.node_hasgeo[idx]:
+                return True
+                
+            if "mesh" in node:
+                self.node_hasgeo[idx] = True
+                return True
+                
+            if "children" in node:
+                for child in node["children"]:
+                    if(recurs(self.json_obj["nodes"][child], idx)):
+                        self.node_hasgeo[idx] = True
+                        return True
+            
+            return False
+            
+            
+        for (idx, node) in enumerate(self.json_obj["nodes"]):
+            recurs(node, idx)
+    
+    def load_flattened(self, scene):
+        self.init_networks()
+        
+        c_atrbs = self.settings["import_cust_attribs"]
+        lock = self.settings["lock_geo"]
+        filename = self.settings["filename"]
+        
+        geo = self.root_node.createNode("geo")
+        gltf_sop = geo.createNode("gltf")
+        
+        _setParmValue(gltf_sop, "filename", filename)
+        _setParmValue(gltf_sop, "loadby", "scene")
+        _setParmValue(gltf_sop, "scene", 0)
+        _setParmValue(gltf_sop, "usecustomattribs", c_atrbs)
+        _setParmValue(gltf_sop, "loadMeshNames", True)
+        _setParmValue(gltf_sop, "materialassigns", self.settings["import_mats"])
+    
+        gltf_sop.setHardLocked(lock)
+        
+        if self.settings["import_mats"]:
+            if self.settings["import_mats"] and "materials" in self.json_obj:
+                for idx in xrange(len(self.json_obj["materials"])):
+                    self.import_material(idx)
+    
+        return geo, gltf_sop
+    
+    # This is seperated from the constructor, because this class can
+    # potentially also be used for purposes other than building geometry
+    def load(self):
+        self.init_networks()
+        
+        if self.settings["import_unusedmats"] and "materials" in self.json_obj:
+            for idx in xrange(len(self.json_obj["materials"])):
+                self.import_material(idx)
+                
+        self.determine_nodes_with_geo()
+        
+    def get_abspath(self, filename):
+        return os.path.join(os.path.abspath(self.base_folder), 
+            filename).replace("\\", "/")
+        
+    def init_networks(self):
+        self.matnet = _new_matnet(self.root_node, "materials")
+    
+    def get_bufferview_data(self, bufferview_idx):
+        bufferview = self.json_obj["bufferViews"][bufferview_idx]
+        buffer_data = self.buffer_data[bufferview["buffer"]]
+        
+        byte_offset = 0
+        if "byteOffset" in bufferview:
+            byte_offset = bufferview["byteOffset"]
+        byte_length = bufferview["byteLength"]
+                
+        return buffer_data[byte_offset : byte_offset + byte_length]
+            
+    def get_buffer_data(self, buffer_idx):
+        if self.buffer_data[buffer_idx] == None:
+            self.load_buffer(buffer_idx)
+        return self.buffer_data[buffer_idx]
+        
+    def load_buffer(self, buffer_idx):
+        buffer = self.json_obj["buffers"][buffer_idx]
+        
+        if "uri" in buffer:
+            buffer_uri = buffer["uri"]
+            with open(buffer_uri, "r") as f:
+                buffer_data = f.read(length)
+                self.buffer_data[buffer_idx] = buffer_data
+                return
+        else:
+            raise Exception("TODO:  Implement b64 buffer support!")
+            
+    def parse_scene(self, scene_id):
+
+        scene = self.json_obj["scenes"][scene_id]
+        for node in scene["nodes"]:
+            self.walk_node(node, None)
+
+    def walk_node(self, node_id, parent):
+        if not self.node_hasgeo[node_id] and not self.settings["import_non_geo"]:
+            return
+         
+        node = self.json_obj["nodes"][node_id]
+        
+        # Import each submesh
+        if "mesh" in node and self.settings["import_geometry"]:
+            new_node = self.create_mesh(node["mesh"])
+        else:
+            new_node = self.root_node.createNode("null")
+        
+        set_transform(new_node, node)
+        
+        if "name" in node:
+            _setNodeName(new_node, node["name"])
+            
+        if parent != None:
+            new_node.setNextInput(parent)
+            
+        # Import each child
+        if "children" in node:
+            for child in node["children"]:
+                self.walk_node(child, new_node)
+                
+    def new_image_filename(self, image, image_idx, suffix):
+        name = self.settings["asset_folder"]
+        name = name + self.file_tail + "_" + str(image_idx)     
+        if "name" in image:
+            name = name + "_" + image["name"]
+        name = name + suffix
+        return name
+    
+    def get_image_uri(self, image_idx):
+        if image_idx in self.image_cache:
+            return self.image_cache[image_idx]
+ 
+        image = self.json_obj["images"][image_idx]    
+        if "uri" in image:
+            # Unpack the image from 
+            uri = image["uri"]
+            if uri[:5] == 'data:':
+                data_start = uri.find(';base64,')
+                if data_start != -1:
+                    data = uri[data_start+8:]
+                    mimetype = uri[5:data_start]
+                    suffix = _get_suffix_from_mimetype(mimetype)
+                    new_filename = self.new_image_filename(image, image_idx, suffix)
+                    with open(new_filename, 'wb') as newFile:
+                        newFile.write(base64.b64decode(data))
+                        final_path = newFile.name.replace("\\", "/")
+                        self.image_cache[image_idx] = final_path
+                        return final_path
+            
+            # The image is already external - just return the path
+            return self.get_abspath(image["uri"])
+        
+        # Unpack the image from the binary buffer
+        if "bufferView" in image:
+
+            suffix = _get_suffix_from_mimetype(image["mimeType"])
+            
+            data = self.get_bufferview_data(image["bufferView"])
+            
+            new_filename = self.new_image_filename(image, image_idx, suffix)
+            with open(new_filename, 'wb') as newFile:
+                newFile.write(data)
+                final_path = newFile.name.replace("\\", "/")
+                self.image_cache[image_idx] = final_path
+                return final_path
+        
+    def _translate_normal_texture(self, pbr_node, normal_texture):
+        _setParmValue(pbr_node, "baseBumpAndNormal_enable", True)
+        
+        image_idx = normal_texture["index"]
+        img_path = self.get_image_uri(image_idx)
+        
+        _setParmValue(pbr_node, "baseNormal_texture", img_path)
+        
+        if "scale" in normal_texture:
+            _setParmValue(pbr_node, "baseNormal_scale", normal_texture["scale"])
+    
+    def _translate_emissive_texture(self, pbr_node, emissive_texture):
+        image = self.json_obj["images"][emissive_texture["index"]]
+        _setParmValue(pbr_node, "emitcolor_useTexture", True)
+        
+        image_idx = emissive_texture["index"]
+        img_path = self.get_image_uri(image_idx)
+        _setParmValue(pbr_node, "emitcolor_texture", img_path)
+            
+    def _translate_metallic_roughness(self, pbr_node, mr_params):
+        if "baseColorFactor" in mr_params:
+            pbr_node.parmTuple("basecolor").set(mr_params["baseColorFactor"][:3])
+            # Alpha is stored seperately from color in Principled Shader
+            _setParmValue(pbr_node, "opac", mr_params["baseColorFactor"][3])
+        else:
+            pbr_node.parmTuple("basecolor").set([1, 1, 1])
+            _setParmValue(pbr_node, "opac", 1)        
+            
+        if "baseColorTexture" in mr_params:
+            _setParmValue(pbr_node, "basecolor_useTexture", True)
+            texture = self.json_obj["textures"][mr_params["baseColorTexture"]["index"]]
+            if "source" in texture:
+                image_idx = texture["source"]
+                imgpath = self.get_image_uri(image_idx)
+                _setParmValue(
+                    pbr_node, 
+                    "basecolor_texture", 
+                    imgpath
+                )
+                    
+        if "metallicFactor" in mr_params:
+            _setParmValue(pbr_node, "metallic", mr_params["metallicFactor"])
+        else:
+            _setParmValue(pbr_node, "metallic", 1)
+        
+        if "roughnessFactor" in mr_params:
+            _setParmValue(pbr_node, "rough", mr_params["roughnessFactor"])
+        else:
+            _setParmValue(pbr_node, "rough", 1)
+        
+        if "metallicRoughnessTexture" in mr_params:
+            _setParmValue(pbr_node, "metallic_useTexture", True)
+            _setParmValue(pbr_node, "rough_useTexture", True)
+            texture = self.json_obj["textures"][mr_params["metallicRoughnessTexture"]["index"]]
+            if "source" in texture:
+                image_idx = texture["source"]
+                img_path = self.get_image_uri(image_idx)
+                _setParmValue(pbr_node, "baseNormal_texture", img_path)
+            
+                # Hook up metal/roughness material to texture 
+                _setParmValue(pbr_node, "metallic_texture", img_path)
+                _setParmValue(pbr_node, "metallic_monoChannel", 3)
+                
+                _setParmValue(pbr_node, "rough_texture", img_path)
+                _setParmValue(pbr_node, "rough_monoChannel", 2)
+     
+    # We use a naming scheme material_name_idx for cases of duplicate
+    # materials
+    def get_material_name(self, mat_idx, mat_name):
+        is_duplicate = mat_name in self.name_set and self.name_set[mat_name] > 1
+        if is_duplicate:
+            return mat_name + "_" + str(mat_idx)
+            
+        return mat_name
+        
+    def import_material(self, material_id):
+        # Check if we've created the material already
+        if material_id in self.material_cache:
+            return self.material_cache[material_id]
+        
+        material = self.json_obj["materials"][material_id]
+        
+        pbr_node = _new_pbr_node(self.matnet)
+        if "name" in material:
+            name = self.get_material_name(material_id, material["name"])
+        else:
+            name = self.get_material_name(material_id, pbr_node.name())
+        _setNodeName(pbr_node, name)
+            
+        if "pbrMetallicRoughness" in material:
+            self._translate_metallic_roughness(pbr_node, material["pbrMetallicRoughness"])
+        
+        if "normalTexture" in material:
+            self._translate_normal_texture(pbr_node, material["normalTexture"])
+        
+        if "emissiveTexture" in material:
+            self._translate_emissive_texture(pbr_node, material["emissiveTexture"])
+
+        if "emissiveFactor" in material:
+            pbr_node.parmTuple("emitcolor").set(material["emissiveFactor"])
+            
+        # TODO: Handle other material properties
+        self.material_cache[material_id] = pbr_node
+         
+        return pbr_node
+        
+    def import_primitive(self, mesh, mesh_name, mesh_id):
+        geonode, gltf_geo_node = _new_geonode(
+            self.root_node,  
+            mesh_name, 
+            self.filename, 
+            mesh_id, 
+            self.settings["lock_geo"],
+            self.settings["import_cust_attribs"],
+            self.settings["promote_point_attrs"],
+            self.settings["point_consolidation_dist"]
+        )
+        
+        for idx, prim in enumerate(mesh["primitives"]):
+            if "material" in prim and self.settings["import_mats"]:
+                material_node = self.import_material(prim["material"])
+                    
+        return geonode
+        
+    def create_mesh(self, mesh_id):
+        mesh = self.json_obj["meshes"][mesh_id]
+        
+        if "name" in mesh:
+            name = mesh["name"]
+        else:
+            name = ""
+            
+        mesh_node = self.import_primitive(mesh, name, mesh_id)
+        
+        return mesh_node
+
+##################################################
+
+def _destroy_children(rootnode):
+    for child in rootnode.children():
+        child.destroy()
+
+def LoadGLB(rootnode, filename, settings):
+    with open(filename, "rb") as glb_file:
+
+        content = glb_file.read()
+        
+        offset = 0
+        header = struct.unpack_from("4sII", content)
+        ver = header[1]
+        
+        if ver != 2:
+            raise Exception("Attempted to load unsupported GLB version")
+        
+        offset = 12
+        
+        # Read in JSON chunk
+        json_chunk = struct.unpack_from("I4s", content, offset)
+        
+        chunk_length = json_chunk[0]
+        chunk_type = json_chunk[1]
+        
+        json_data = content[offset + 8 :offset + 8 + chunk_length]
+        json_obj = json.loads(json_data)
+        
+        offset = offset + 8 + chunk_length
+        
+        # Read in DATA chunk
+        data_chunk = struct.unpack_from("I4s", content, offset)
+        data_chunk_length = data_chunk[0]
+        data_chunk_type = data_chunk[1]
+        bin_data = content[offset + 8 : offset + 8 + data_chunk_length]
+        
+        scene = GLTF_Scene(rootnode, filename, json_obj, True, settings)
+        scene.buffer_data[0] = bin_data
+
+        if settings["flattenhierarchy"]:
+            scene.load_flattened(settings["scene"])
+        else:        
+            scene.load()
+            scene.parse_scene(settings["scene"])
+        
+        rootnode.layoutChildren()
+        scene.matnet.layoutChildren()
+
+def LoadGLTF(rootnode, filename, settings):
+    json_obj = json.load(open(filename))
+    scene = GLTF_Scene(rootnode, filename, json_obj, False, settings)
+    
+    if settings["flattenhierarchy"]:
+        scene.load_flattened(settings["scene"])
+    else:        
+        scene.load()
+        scene.parse_scene(settings["scene"])
+    
+    # Format nodes nicely
+    rootnode.layoutChildren()
+    scene.matnet.layoutChildren()
+
+def EnsureAssetFolder(dirname, original_dirname):
+    if not os.path.exists(dirname):
+        try:
+            os.makedirs(dirname)
+        except IOError:
+            return False
+            
+    # Need to check permissions on dir itself
+    if not os.access(original_dirname, os.W_OK | os.X_OK):
+        return False
+    
+    return True
+    
+def LoadHierarchy(filename, rootnode):
+    settings = {}
+    settings["import_geometry"] = rootnode.parm("importgeometry").evalAsInt() != 0 
+    settings["import_cust_attribs"] = rootnode.parm("importcustomattributes").evalAsInt() != 0
+    settings["import_mats"] = rootnode.parm("importmaterials").evalAsInt() != 0
+    settings["import_unusedmats"] = (rootnode.parm("importunusedmaterials").evalAsInt()) != 0 and settings["import_mats"]
+    settings["lock_geo"] = rootnode.parm("lockgeo").evalAsInt() != 0 
+    settings["import_non_geo"] = rootnode.parm("importnongeo").evalAsInt() != 0 
+    settings["scene"] = int(rootnode.parm("scene").evalAsString())
+    settings["asset_folder"] = rootnode.parm("assetfolder").evalAsString()
+    settings["flattenhierarchy"] = rootnode.parm("flattenhierarchy").evalAsInt() != 0
+    settings["filename"] = filename
+    settings["promote_point_attrs"] = rootnode.parm("promotepointattrs").evalAsInt() != 0
+    settings["point_consolidation_dist"] = rootnode.parm("pointconsolidatedist").evalAsFloat();
+    
+    original_name = settings["asset_folder"]
+    # Allow for both formats like $HIP/folder and $HIP/folder/
+    if not settings["asset_folder"].endswith("/"):
+        settings["asset_folder"] += "/"
+    
+    # Check if we have an external image at the start, so that if we can't
+    # unpack it in the asset folder, we just bail
+    has_external_image = False
+    
+    if not EnsureAssetFolder(settings["asset_folder"], original_name):
+        ui.displayMessage(title='Unable to Access Asset Folder',
+            text='Unable to access directory ' + original_name + '.  A valid external directory is required to unpack glTF buffers.',
+            severity=hou.severityType.Error)
+        return
+            
+    (root, ext) = os.path.splitext(filename)
+    if ext.lower() == ".gltf":
+        LoadGLTF(rootnode, filename, settings)
+    elif ext.lower() == ".glb":
+        LoadGLB(rootnode, filename, settings)
+    else:
+        ui.displayMessage(title='Invalid glTF File Type',
+            text='Please select a valid file with an extension of .gltf or .glb.',
+            severity=hou.severityType.Error)
+        return
+        
+def ReloadGeometry(rootnode):
+    _destroy_children(rootnode)
+    
+    filename = rootnode.parm("filename").evalAsString()
+    flatten = rootnode.parm("flattenhierarchy").evalAsInt() != 0 
+    
+    _gltf.gltfClearCache(filename)
+    
+    LoadHierarchy(filename, rootnode)
+       
+        
+#####################################
+
+def GenerateSceneMenu(rootnode):
+    filename = rootnode.parm("filename").evalAsString()
+    scenes = _gltf.gltfGetSceneList(filename)
+    return scenes
+        
+def EvaluateMenus(rootnode):
+    scenes = GenerateSceneMenu(rootnode)
+    if(len(scenes) == 0):
+        if (ui):
+            ui.displayMessage(title='No Scenes',
+                        text='Please select a GLTF file containing one or more scene',
+                        severity=hou.severityType.Error)
+        return
+                
+    hou.pwd().parm("scene").set(GenerateSceneMenu(rootnode)[0])
