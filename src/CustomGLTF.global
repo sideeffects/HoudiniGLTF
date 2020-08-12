@@ -1,0 +1,31 @@
+# Global include file for custom glTF library
+# Modify these values here to customize your glTF library
+
+# GLTF core library
+GLTFLIB = CustomGLTF
+
+# GLTC custom namespace
+GLTFNAMESPACE = GLTF_Custom
+
+# Custom Operator prefix
+TOKEN_PREFIX = "custom"
+LABEL_PREFIX = "Custom "
+
+# SOP lib name
+SOPLIB = SOP_CustomGLTF
+
+# ROP lib name
+ROPLIB = ROP_CustomGLTF
+
+# HOM lib name
+HOM_LIB = HOM_CustomGLTF
+
+
+# lib extension
+ifdef WINDOWS
+EXT = dll
+else ifdef MBSD
+EXT = dylib
+else
+EXT = so
+endif
