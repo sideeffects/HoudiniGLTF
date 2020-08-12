@@ -1,0 +1,117 @@
+#type: node
+#context: out
+#internal: gltf
+#icon: SOP/Geometry
+#since: 17.0
+
+= glTF =
+
+The glTF ROP can export your scene as a GLTF file.
+See the following link for further information about the [glTF format|https://www.khronos.org/gltf/].
+
+@parameters
+
+Render to Disk:
+	#id: execute
+
+        Begins the render with the last render control settings.
+
+Controls...:
+	#id: renderdialog
+
+        Opens the render control dialog to allow adjustments of the render parameters before rendering.
+
+File Name:
+	#id: file
+
+        The path of the file to generate.  The extension determines the type of file to generate.
+	
+	A path with a `.glb` extension generates a single binary GLB file and stores all resources internally.
+	
+	A path with a `.gltf` extension may store some resources externally.  Exported resources are stored in the same folder as the file and are referenced relatively. 
+
+Texture Format:
+	#id: format
+
+	Save all images and textures using this file format.
+
+Max Texture Resolution:
+    #id: maxresolution
+
+    If any texture is larger than this resolution then downsize it to this resolution.  Useful for quickly reducing file size.
+
+Texture Quality:
+    #id: imagequality
+
+	The level of compression to apply to outputted textures.  Only applies to lossy image formats.
+
+
+Root Object:
+	#id: root
+
+        The root object of the scene. All objects contained under this node will be included in the glTF scene.
+
+Objects:
+	#id: objects
+	
+        A pattern/bundle of objects to include in the glTF scene.
+
+Flip Normal Map Y:
+    #id: flipnormalmapy
+
+    Invert the y-coordinate on the normal texture map for each exported mesh.  glTF's orientation expects an upwards
+    facing y-axis.
+
+Save All Non-Displayed (Hidden) Objects:
+	#id: savehidden
+
+	If this checkbox is turned on, hidden objects matching the __Objects__ pattern/bundle will also written to the glTF scene.
+
+Export Custom Attributes:
+	#id: exportcustom
+
+	If this checkbox is turned off, only attributes defined in the glTF standard are exported.
+
+	Otherwise, all public attributes are exported.
+
+	Attributes are exported with their original types when possible.  However, glTF allows a maximum of 32 bits for floats and integers.  Integers are also required to be unsigned.
+	
+	Attempting to export a datatypes larger than this will narrow the type and print a warning.
+
+	Exported custom attribute names are the original names plus an _ (underscore) prefix.
+
+	As glTF only supports point attributes, name collisions will be resolved using the normal attribute resolution order.
+
+Export Node Names:
+	#id: exportnames
+
+	This assigns Houdini node names to the name field of glTF objects.
+	
+	In addition, the name attribute on packed primitives will be exported.
+
+	Names are assigned to materials, transformation nodes and geometry.
+
+Export Materials:
+	#id: exportmaterials
+
+        Enabling this option exports Principled Shader materials.
+	
+	Materials are exported as a combination of emissive maps, normal maps, and PBRMetallicRoughness materials.
+
+	All associated textures and images used by the material are exported alongside the material.
+
+	Some Principled Shader options such as ambient occlusion and subsurface scattering are not exported.  
+	
+	Materials that do not use the Principled Shader will be ignored.
+
+Cull Empty Nodes:
+	#id: cullempty
+
+	Enabling this will cause any Object node which has no descendents containing geometry to be ignored.
+
+Rescale Texture as Power of Two:
+	#id: poweroftwo
+
+	This will rescale exported images so that the final image has dimensions which are powers of two (eg. 512x1024, 2048x2048).
+	
+	This is required by some low-spec glTF implementations as well as WebGL implementations in older browsers.
