@@ -1,0 +1,377 @@
+# Dialog script for gltf_hierarchy automatically generated
+
+{
+    name	gltf_hierarchy
+    script	gltf_hierarchy
+    label	"glTF Hierarchy"
+
+    help {
+	""
+    }
+
+    inputlabel	1	"Sub-Network Input #1"
+    inputlabel	2	"Sub-Network Input #2"
+    inputlabel	3	"Sub-Network Input #3"
+    inputlabel	4	"Sub-Network Input #4"
+
+    group {
+        name    "stdswitcher3_1"
+        label   "Subnet"
+        invisibletab
+
+        parm {
+            name    "label1"
+            baseparm
+            label   "Input #1 Label"
+            invisible
+            export  dialog
+        }
+        parm {
+            name    "label2"
+            baseparm
+            label   "Input #2 Label"
+            invisible
+            export  dialog
+        }
+        parm {
+            name    "label3"
+            baseparm
+            label   "Input #3 Label"
+            invisible
+            export  dialog
+        }
+        parm {
+            name    "label4"
+            baseparm
+            label   "Input #4 Label"
+            invisible
+            export  dialog
+        }
+        parm {
+            name    "tdisplay"
+            baseparm
+            label   "Display"
+            invisible
+            joinnext
+            export  all
+        }
+        parm {
+            name    "display"
+            baseparm
+            label   "Display"
+            invisible
+            export  all
+        }
+        parm {
+            name    "outputobj"
+            baseparm
+            label   "Output Transform"
+            invisible
+            export  all
+        }
+        parm {
+            name    "visibleobjects"
+            baseparm
+            label   "Visible Children"
+            invisible
+            export  none
+        }
+        parm {
+            name    "picking"
+            baseparm
+            label   "Viewport Selecting Enabled"
+            invisible
+            export  none
+        }
+        parm {
+            name    "pickscript"
+            baseparm
+            label   "Select Script"
+            invisible
+            export  none
+        }
+        parm {
+            name    "caching"
+            baseparm
+            label   "Cache Object Transform"
+            invisible
+            export  none
+        }
+        parm {
+            name    "use_dcolor"
+            baseparm
+            label   "Set Wireframe Color"
+            invisible
+            export  none
+        }
+        parm {
+            name    "dcolor"
+            baseparm
+            label   "Wireframe Color"
+            invisible
+            export  none
+        }
+    }
+
+    parm {
+        name    "filename"
+        label   "File Name"
+        type    file
+        default { "" }
+        parmtag { "filechooser_mode" "read" }
+        parmtag { "filechooser_pattern" "*.gltf, *.glb" }
+        parmtag { "script_callback" "hou.pwd().hdaModule().EvaluateMenus(kwargs['node'])" }
+        parmtag { "script_callback_language" "python" }
+    }
+    parm {
+        name    "assetfolder"
+        label   "Asset Extraction Folder"
+        type    directory
+        default { "$HIP/glTF_Assets" }
+    }
+    parm {
+        name    "scene"
+        label   "Scene"
+        type    string
+        default { "0" }
+        menu {
+            [ "kwargs['node'].hdaModule().GenerateSceneMenu(kwargs['node'])" ]
+            language python
+        }
+        parmtag { "script_callback_language" "python" }
+    }
+    parm {
+        name    "buildscene"
+        label   "Build Scene"
+        type    button
+        default { "0" }
+        parmtag { "export_disable" "1" }
+        parmtag { "script_callback" "kwargs['node'].hdaModule().ReloadGeometry(kwargs['node'])" }
+        parmtag { "script_callback_language" "python" }
+    }
+    parm {
+        name    "lockgeo"
+        label   "Lock Geometry"
+        type    toggle
+        default { "on" }
+        disablewhen "{ importgeometry == 0 }"
+    }
+    parm {
+        name    "flattenhierarchy"
+        label   "Flatten Hierarchy"
+        type    toggle
+        default { "off" }
+        parmtag { "import_enable" "1" }
+    }
+    parm {
+        name    "promotepointattrs"
+        label   "Promote Point Attributes To Vertex"
+        type    toggle
+        default { "1" }
+    }
+    parm {
+        name    "pointconsolidatedist"
+        label   "Points Merge Distance"
+        type    float
+        default { "0.0001" }
+        disablewhen "{ promotepointattrs == 0 }"
+        range   { 0! 10 }
+    }
+    group {
+        name    "stdswitcher3_2"
+        label   "Filter Options"
+
+        parm {
+            name    "importgeometry"
+            label   "Import Geometry"
+            type    toggle
+            default { "on" }
+            disablewhen "{ flattenhierarchy != 0 }"
+        }
+        parm {
+            name    "importcustomattributes"
+            label   "Import Custom Attributes"
+            type    toggle
+            default { "on" }
+            disablewhen "{ importgeometry == 0 }"
+        }
+        parm {
+            name    "importmaterials"
+            label   "Import Materials"
+            type    toggle
+            default { "on" }
+        }
+        parm {
+            name    "importnongeo"
+            label   "Import Non-Geometry"
+            type    toggle
+            default { "off" }
+            disablewhen "{ importgeometry == 0 } { flattenhierarchy != 0 }"
+        }
+        parm {
+            name    "importunusedmaterials"
+            label   "Import Unused Materials"
+            type    toggle
+            default { "off" }
+            disablewhen "{ importmaterials == 0 } { flattenhierarchy != 0 }"
+        }
+    }
+
+    group {
+        name    "stdswitcher3_2_1"
+        label   "Transform"
+
+        parm {
+            name    "xOrd"
+            baseparm
+            label   "Transform Order"
+            joinnext
+            export  none
+        }
+        parm {
+            name    "rOrd"
+            baseparm
+            label   "Scene"
+            nolabel
+            export  none
+        }
+        parm {
+            name    "t"
+            baseparm
+            label   "Translate"
+            export  none
+        }
+        parm {
+            name    "r"
+            baseparm
+            label   "Rotate"
+            export  none
+        }
+        parm {
+            name    "s"
+            baseparm
+            label   "Scale"
+            export  none
+        }
+        parm {
+            name    "p"
+            baseparm
+            label   "Pivot Translate"
+            export  none
+        }
+        parm {
+            name    "pr"
+            baseparm
+            label   "Pivot Rotate"
+            export  none
+        }
+        parm {
+            name    "scale"
+            baseparm
+            label   "Uniform Scale"
+            export  none
+        }
+        parm {
+            name    "pre_xform"
+            baseparm
+            label   "Modify Pre-Transform"
+            export  none
+        }
+        parm {
+            name    "keeppos"
+            baseparm
+            label   "Keep Position When Parenting"
+            export  none
+        }
+        parm {
+            name    "childcomp"
+            baseparm
+            label   "Child Compensation"
+            export  none
+        }
+        parm {
+            name    "constraints_on"
+            baseparm
+            label   "Enable Constraints"
+            export  none
+        }
+        parm {
+            name    "constraints_path"
+            baseparm
+            label   "Constraints"
+            invisible
+            export  none
+        }
+        parm {
+            name    "lookatpath"
+            baseparm
+            label   "Look At"
+            invisible
+            export  none
+        }
+        parm {
+            name    "lookupobjpath"
+            baseparm
+            label   "Look Up Object"
+            invisible
+            export  none
+        }
+        parm {
+            name    "lookup"
+            baseparm
+            label   "Look At Up Vector"
+            invisible
+            export  none
+        }
+        parm {
+            name    "pathobjpath"
+            baseparm
+            label   "Path Object"
+            invisible
+            export  none
+        }
+        parm {
+            name    "roll"
+            baseparm
+            label   "Roll"
+            invisible
+            export  none
+        }
+        parm {
+            name    "pos"
+            baseparm
+            label   "Position"
+            invisible
+            export  none
+        }
+        parm {
+            name    "uparmtype"
+            baseparm
+            label   "Parameterization"
+            invisible
+            export  none
+        }
+        parm {
+            name    "pathorient"
+            baseparm
+            label   "Orient Along Path"
+            invisible
+            export  none
+        }
+        parm {
+            name    "up"
+            baseparm
+            label   "Orient Up Vector"
+            invisible
+            export  none
+        }
+        parm {
+            name    "bank"
+            baseparm
+            label   "Auto-Bank factor"
+            invisible
+            export  none
+        }
+    }
+
+}

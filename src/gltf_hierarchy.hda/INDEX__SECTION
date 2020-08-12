@@ -1,0 +1,14 @@
+Operator:     gltf_hierarchy
+Label:        glTF Hierarchy
+Path:         oplib:/Object/gltf_hierarchy?Object/gltf_hierarchy
+Icon:         OBJ_gltf_hierarchy
+Table:        Object
+License:      
+Extra:        
+User:         
+Inputs:       0 to 0
+Subnet:       true
+Python:       false
+Empty:        false
+Modified:     Wed Jan 23 13:58:11 2019
+

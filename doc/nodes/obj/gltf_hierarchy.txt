@@ -1,0 +1,92 @@
+#type: node
+#context: obj
+#internal: gltf
+#icon: SOP/Geometry
+
+= glTF =
+
+The glTF hierarchy importer can import a glTF scene as a network of nodes or as flattened geometry.
+See the following link for further information about the [glTF format|https://www.khronos.org/gltf/].
+
+@parameters
+
+File Name:
+	#id: filename
+
+	The glTF file to.  The loading method depends on the extension of the file loaded.  
+	
+	Files with a .glb extension be treated as binary GLB files.
+	
+	Files with a .gltf extension will be loaded as normal JSON data.
+
+Asset Extraction Folder:
+	#id: assetfolder
+
+	Textures packed into a glTF binary buffer or represented as base64 data must be unpacked before usage.  
+	
+	This field specifies the location textures are to be unpacked on disk.
+
+Scene:
+	#id: scene
+
+	Select the scene to import from the glTF object.
+	
+	In the absence of a scene name, the label will be based off the scene index.
+
+Build Scene:
+	#id: buildscene
+
+	Build the scene from the input parameters.  If the scene was loaded previously, this will reload the scene hierarchy and geometry.
+
+Lock Geometry:
+	#id: lockgeo
+
+	Enable this option to lock any geometry nodes created during scene building.
+
+Flatten Hierarchy:
+	#id:flattenhierarchy
+
+	Flatten all nodes in the scene down to a single node containing all the 
+	geometry.
+
+Promote Point Attributes To Vertex:
+	#id: promotepointattrs
+
+	Promote all point attributes (excluding P) to vertex attributes.
+
+Points Merge Distance:
+	#id: pointconsolidatedist
+
+	When __Promote Point Attributes To Vertex__ is enabled, points within this distance to each other will be merged.
+
+
+== Filter Options ==
+
+Import Geometry:
+	#id: importgeometry
+
+	Enable this option to import geometry objects.  When disabled, glTF meshes will be loaded as empty Geometry nodes.
+
+Import Custom Attributes:
+	#id: importcustomattributes
+
+	Enable this option to import any custom attributes from glTF primitives.
+	
+	Custom attributes in glTF are prefixed with an underscore _ which will be stripped during import. 
+
+Import Materials:
+	#id: importmaterials
+
+	Enable this option to import glTF materials as Principled Shader materials.  This also creates material assignments.
+	
+	If this option is disabled, materials and material assignments will not be created.
+
+Import Non-Geometry:
+	#id: importnongeo
+
+	Import nodes which do not create or transform any geometry.  Disable this to remove unused nodes when the additional hierarchical data is unneeded.
+
+Import Unused Materials:
+	#id: importunusedmaterials
+
+	Import all materials available, even if they are not assigned or used by the imported scene.
