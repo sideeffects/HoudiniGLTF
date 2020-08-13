@@ -1,5 +1,5 @@
 /*
- * Copyright (c) COPYRIGHTYEAR
+ * Copyright (c) 2020
  *       Side Effects Software Inc.  All rights reserved.
  *
  * Redistribution and use of Houdini Development Kit samples in source and
@@ -490,7 +490,7 @@ GLTF_Loader::ReadAsset(const UT_JSONValueMap &asset_json)
 bool
 GLTF_Loader::ReadNode(const UT_JSONValueMap &node_json, const exint idx)
 {
-    auto node = UT_UniquePtr<GLTF_Node>(new GLTF_Node);
+    auto node = UTmakeUnique<GLTF_Node>();
     const UT_JSONValue *children = node_json["children"];
 
     if (children)
@@ -533,7 +533,7 @@ GLTF_Loader::ReadNode(const UT_JSONValueMap &node_json, const exint idx)
 bool
 GLTF_Loader::ReadBuffer(const UT_JSONValueMap &buffer_json, const exint idx)
 {
-    auto buffer = UT_UniquePtr<GLTF_Buffer>(new GLTF_Buffer);
+    auto buffer = UTmakeUnique<GLTF_Buffer>();
 
     if (!ParseAsString(buffer_json["uri"], false, &buffer->myURI))
         return false;
@@ -551,7 +551,7 @@ GLTF_Loader::ReadBuffer(const UT_JSONValueMap &buffer_json, const exint idx)
 bool
 GLTF_Loader::ReadBufferView(const UT_JSONValueMap &bufferview_json, const exint idx)
 {
-    auto bufferview = UT_UniquePtr<GLTF_BufferView>(new GLTF_BufferView);
+    auto bufferview = UTmakeUnique<GLTF_BufferView>();
     uint32 target = 0;
 
     if (!ParseAsInteger(bufferview_json["buffer"], true, &bufferview->buffer))
@@ -587,7 +587,7 @@ GLTF_Loader::ReadBufferView(const UT_JSONValueMap &bufferview_json, const exint 
 bool
 GLTF_Loader::ReadAccessor(const UT_JSONValueMap &accessor_json, const exint idx)
 {
-    auto accessor = UT_UniquePtr<GLTF_Accessor>(new GLTF_Accessor);
+    auto accessor = UTmakeUnique<GLTF_Accessor>();
     uint32 componentType;
     const char *type;
     GLTF_Type gltf_type;
@@ -673,7 +673,7 @@ GLTF_Loader::ReadPrimitive(const UT_JSONValue *primitive_json,
 bool
 GLTF_Loader::ReadMesh(const UT_JSONValueMap &mesh_json, const exint idx)
 {
-    auto mesh = UT_UniquePtr<GLTF_Mesh>(new GLTF_Mesh);
+    auto mesh = UTmakeUnique<GLTF_Mesh>();
 
     // Parse the primitives in the mesh
     const UT_JSONValue *primitives = mesh_json["primitives"];
@@ -703,7 +703,7 @@ GLTF_Loader::ReadMesh(const UT_JSONValueMap &mesh_json, const exint idx)
 bool
 GLTF_Loader::ReadTexture(const UT_JSONValueMap &texture_json, const exint idx)
 {
-    auto texture = UT_UniquePtr<GLTF_Texture>(new GLTF_Texture);
+    auto texture = UTmakeUnique<GLTF_Texture>();
 
     if (!ParseAsInteger(texture_json["sampler"], false, &texture->sampler))
         return false;
@@ -721,7 +721,7 @@ GLTF_Loader::ReadTexture(const UT_JSONValueMap &texture_json, const exint idx)
 bool
 GLTF_Loader::ReadSampler(const UT_JSONValueMap &sampler_json, const exint idx)
 {
-    auto sampler = UT_UniquePtr<GLTF_Sampler>(new GLTF_Sampler);
+    auto sampler = UTmakeUnique<GLTF_Sampler>();
 
     uint32 magFilter = GLTF_TexFilter::GLTF_TEXFILTER_INVALID;
     uint32 minFilter = GLTF_TexFilter::GLTF_TEXFILTER_INVALID;
@@ -764,7 +764,7 @@ GLTF_Loader::ReadSampler(const UT_JSONValueMap &sampler_json, const exint idx)
 bool
 GLTF_Loader::ReadImage(const UT_JSONValueMap &image_json, const exint idx)
 {
-    auto image = UT_UniquePtr<GLTF_Image>(new GLTF_Image);
+    auto image = UTmakeUnique<GLTF_Image>();
 
     if (!ParseAsString(image_json["uri"], false, &image->uri))
         return false;
@@ -786,7 +786,7 @@ GLTF_Loader::ReadMaterial(const UT_JSONValueMap &material_json, const exint idx)
 {
     // Just read the name in...
     // todo:  we can read the rest in if we ever need to
-    auto material = UT_UniquePtr<GLTF_Material>(new GLTF_Material);
+    auto material = UTmakeUnique<GLTF_Material>();
 
 	if (!material_json["name"])
 	{
@@ -807,7 +807,7 @@ GLTF_Loader::ReadMaterial(const UT_JSONValueMap &material_json, const exint idx)
 bool
 GLTF_Loader::ReadScene(const UT_JSONValueMap &scene_json, const exint idx)
 {
-    auto scene = UT_UniquePtr<GLTF_Scene>(new GLTF_Scene);
+    auto scene = UTmakeUnique<GLTF_Scene>();
 
     const UT_JSONValue *nodes = scene_json["nodes"];
     if (nodes)
