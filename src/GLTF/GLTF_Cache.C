@@ -1,5 +1,5 @@
 /*
-* Copyright (c) COPYRIGHTYEAR
+* Copyright (c) 2020
 *       Side Effects Software Inc.  All rights reserved.
 *
 * Redistribution and use of Houdini Development Kit samples in source and
@@ -85,7 +85,7 @@ GLTF_Cache::LoadLoader(const UT_StringHolder &path)
             AutomaticEvict();
         }
 
-        auto new_loader = UT_SharedPtr<GLTF_Loader>(new GLTF_Loader(UT_String(path)));
+        auto new_loader = UTmakeShared<GLTF_Loader>(UT_String(path));
 
         // If loading fails, then return an empty object
         if (!new_loader->Load())
