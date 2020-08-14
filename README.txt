@@ -10,31 +10,33 @@ in src/CustomGLTF.global.
 This project has been setup to build with make. See
 https://www.sidefx.com/docs/hdk/_h_d_k__intro__compiling.html#HDK_Intro_Compiling_Makefiles
 
+For coding reference, see the Houdini Development Kit: https://www.sidefx.com/docs/hdk/
+
 Requires Houdini 18.0.552 or newer. Does not work with earlier versions of Houdini.
 
 -------------------------------------------------------------------------------
 Libraries:
 -------------------------------------------------------------------------------
 
-- src/GLTF/
+- src/GLTF
     Source code for the core glTF import and export library which contains most 
     of the parsing and writing code. The generated libCustomGLTF.so/.dll should be
     placed in a path pointed to by LD_LIBRARY_PATH (Linux), or DYLD_LIBRARY_PATH
     (macOS) or PATH (Windows).
 
-- src/SOP/
+- src/SOP
     Source code for the glTF SOP importer node. The generated SOP_CustomGLTF.so/.dll
     should be placed in $HOME/houdiniX.X/dso or a path pointed to by HOUDINI_DSO_PATH.
 
-- src/ROP/
+- src/ROP
     Source code for the glTF ROP exporter node. The generated ROP_CustomGLTF.so/.dll
     should be placed in $HOME/houdiniX.X/dso or a path pointed to by HOUDINI_DSO_PATH.
 
-- src/HOM/
+- src/HOM
     Source code for the glTF HOM module. The generated HOM_CustomGLTF.so/.dll
     should be placed in $HOME/houdiniX.X/dso or a path pointed to by HOUDINI_DSO_PATH.
 
-- gltf_hierarchy.hda/
+- src/gltf_hierarchy.hda
     The Object node to load in a glTF scene hierarchy, as a Houdini Digital Asset.
     This should be placed $HOME/houdiniX.X/otls.
 
@@ -55,13 +57,11 @@ source ./houdini_setup
 Then set the MSVC dir (change to your version of MSVC).
 export MSVCDir="C:/Program Files (x86)/Microsoft Visual Studio/2017/Professional/VC/Tools/MSVC/14.16.27023"
 
-Then go to the HoudiniGLTF/src/ folder.
+The following steps assume you cloned this repo to C:\HoudiniGLTF
 
-- To build all libs: make WINDOWS=1 all
+Go to the HoudiniGLTF\src folder. Then do one of the following:
 
-- To build a specific lib (such as libCustomGLTF.dll): make WINDOWS=1 gltf
-
-- To clean all: make WINDOWS=1 clean
+    To build all libs: make WINDOWS=1 all
 
 Note that libCustomGLTF.dll must be built first. The other libs depend on it.
 
@@ -72,6 +72,25 @@ set PATH=%PATH%;C:\HoudiniGLTF\src\GLTF
 Then copy over the built SOP, ROP, and HOM .dlls to %HOME%/houdiniX.X/dso 
 (i.e. Houdini home directory).
 
+Run Houdini and you should see the Custom GLTF SOP and ROP nodes.
+
+Notes:
+
+To build a specific lib (such as libCustomGLTF.dll): make WINDOWS=1 gltf
+
+To clean the built files: make WINDOWS=1 clean
+
+Troubleshooting:
+
+If you get compiler errors about Windows libraries such as 'corecrt.h', change 
+the WIN32_KIT_VERSION entry in Houdini 18.0.532\toolkit\makefiles\Makefile.win 
+to the one installed on your system in C:\Program Files (x86)\Windows Kits\10\Lib. 
+For example: WIN32_KIT_VERSION = 10.0.17763.0
+
+If either the SOP or ROP libraries are not loading or the custom nodes are not 
+showing up, set HOUDINI_DSO_ERROR=3 environment variable, and launch Houdini. 
+There should be log entries when these libraries are loaded.
+
 -------------------------------------------------------------------------------
 Building the glTF libraries on Linux or macOS:
 -------------------------------------------------------------------------------
@@ -80,9 +99,11 @@ First, make sure the HFS environment variable is properly set to your Houdini
 install directory.
 
     Linux: export HFS=/opt/hfsX.Y.ZZZ
-    macOS: export HFS=/Applications/Houdini/HoudiniX.Y.ZZZ/Framedworks/Houdini.framework/Versions/X.Y/Resources
+    macOS: export HFS=/Applications/Houdini/HoudiniX.Y.ZZZ/Frameworks/Houdini.framework/Versions/X.Y/Resources
 
-Then go to the HoudiniGLTF/src/ folder.
+The following steps assume you closed this repo to /dev/HoudiniGLTF
+
+Go to the HoudiniGLTF/src/ folder. And execute the following:
 
     Linux: make all
     macOS: make MBSD=1 all
@@ -98,3 +119,7 @@ Then copy over the built SOP, ROP, and HOM .so/.dylib libs to $HOME/houdiniX.X/d
 (i.e. Houdini home directory).
 
 On macOS, Houdini home directory is located at ~/Library/Preferences/houdini/X.Y/
+
+If either the SOP or ROP libraries are not loading or the custom nodes are not 
+showing up, set HOUDINI_DSO_ERROR=3 environment variable, and launch Houdini. 
+There should be log entries when these libraries are loaded.
