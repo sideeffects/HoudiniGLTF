@@ -138,10 +138,10 @@ selectGLTFMeshes(void *data, int index, fpreal t, const PRM_Template *tplate)
         auto &mesh_name = mesh_names[idx];
         UT_String name(UT_String::ALWAYS_DEEP);
 
-        if (mesh_name.myFirst == "")
+        if (mesh_name.first == "")
             name = ("Mesh" + std::to_string(idx + 1)).c_str();
         else
-            name = mesh_name.myFirst;
+            name = mesh_name.first;
 
         cmd.strcat(" ");
         cmd.strcat(name);
@@ -409,7 +409,7 @@ SOP_GLTF::cookMySop(OP_Context &context)
 
 //*****************************************************************************
 
-const UT_Array<UT_Pair<UT_String, GLTF_Handle>> &
+const UT_Array<std::pair<UT_String, GLTF_Handle>> &
 SOP_GLTF::getMeshNames() const
 {
     return myMeshes;

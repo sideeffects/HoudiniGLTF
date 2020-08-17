@@ -1,5 +1,5 @@
 /*
- * Copyright (c) COPYRIGHTYEAR
+ * Copyright (c) 2020
  *        Side Effects Software Inc.  All rights reserved.
  *
  * Redistribution and use of Houdini Development Kit samples in source and
@@ -28,14 +28,13 @@
 #ifndef __SOP_GLTF_H__
 #define __SOP_GLTF_H__
 
-#include <GLTF/GLTF_Types.h>
 #include <SOP/SOP_Node.h>
+#include <GLTF/GLTF_GeoLoader.h>
+#include <GLTF/GLTF_Loader.h>
+#include <GLTF/GLTF_Types.h>
 #include <UT/UT_Array.h>
 #include <UT/UT_Interrupt.h>
-#include <UT/UT_Pair.h>
-
-#include <GLTF/GLTF_Loader.h>
-#include <GLTF/GLTF_GeoLoader.h>
+#include <utility>
 
 class GU_Detail;
 class GU_PrimPacked;
@@ -72,7 +71,7 @@ public:
     // Returns a an array of pairs, where the index corresponds to the
     // index of the mesh, the first item in the pair is the name of
     // the mesh, and the second is the number of primitives
-    const UT_Array<UT_Pair<UT_String, GLTF_Handle>> &getMeshNames() const;
+    const UT_Array<std::pair<UT_String, GLTF_Handle>> &getMeshNames() const;
     const UT_Array<UT_String> &getNodeNames() const;
     const UT_Array<UT_String> &getSceneNames() const;
 
@@ -114,7 +113,7 @@ private:
 
     UT_Array<UT_String> myNodes;
     // The pair consists of <Name : Number of Primitives>
-    UT_Array<UT_Pair<UT_String, GLTF_Handle>> myMeshes;
+    UT_Array<std::pair<UT_String, GLTF_Handle>> myMeshes;
     UT_Array<UT_String> myScenes;
 };
 
