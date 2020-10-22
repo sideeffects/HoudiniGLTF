@@ -1,5 +1,5 @@
 /*
- * Copyright (c) COPYRIGHTYEAR
+ * Copyright (c) 2020
  *       Side Effects Software Inc.  All rights reserved.
  *
  * Redistribution and use of Houdini Development Kit samples in source and
@@ -231,8 +231,13 @@ GLTF_GeoLoader::loadIntoDetail(GU_Detail &detail)
             GU_Promote::promote(detail, attribute, GA_ATTRIB_VERTEX);
 
         // Consolidate points
-        detail.onlyConsolidatePoints(myOptions.pointConsolidationDistance, 
-            nullptr, 0, true, GU_Detail::ONLYCONS_GRP_PROP_LEAST, true);
+	if (myOptions.consolidatePoints)
+	{
+            detail.onlyConsolidatePoints(
+                    myOptions.pointConsolidationDistance, nullptr, 0, true,
+                    GU_Detail::ONLYCONS_GRP_PROP_LEAST, true);
+	}
+        
     }
 
     return true;

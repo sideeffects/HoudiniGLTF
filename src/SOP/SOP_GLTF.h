@@ -130,6 +130,7 @@ public:
         bool loadCustomAttribs = false;
         UT_String material_path;
         bool promotePointAttribs = true;
+        bool consolidateByMesh = true;
         fpreal pointConsolidationDistance = 0.0001F;
     };
 
