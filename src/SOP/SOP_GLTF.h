@@ -1,5 +1,5 @@
 /*
- * Copyright (c) COPYRIGHTYEAR
+ * Copyright (c) 2020
  *        Side Effects Software Inc.  All rights reserved.
  *
  * Redistribution and use of Houdini Development Kit samples in source and
@@ -131,6 +131,7 @@ public:
         bool loadCustomAttribs = false;
         UT_String material_path;
         bool promotePointAttribs = true;
+        bool consolidateByMesh = true;
         fpreal pointConsolidationDistance = 0.0001F;
     };
 

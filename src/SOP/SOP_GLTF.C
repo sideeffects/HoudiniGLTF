@@ -31,6 +31,7 @@
 
 #include <GU/GU_PackedGeometry.h>
 #include <GU/GU_PrimPacked.h>
+#include <GU/GU_Snap.h>
 
 #include <CMD/CMD_Manager.h>
 #include <GA/GA_Names.h>
@@ -347,6 +348,9 @@ SOP_GLTF::cookMySop(OP_Context &context)
     options.flatten = parms.myGeoType == GLTF_GeoType::Houdini_Geo;
     options.loadMats = parms.myLoadMats;
     options.promotePointAttribs = parms.myPromotePointAttrsToVertex;
+    options.consolidateByMesh = !options.flatten
+                                || parms.myLoadStyle
+                                           == GLTF_LoadStyle::Primitive;
     options.pointConsolidationDistance = parms.myPointConsolidationDistance;
 
     if (getParent() && getParent()->getParent())
@@ -610,6 +614,32 @@ SOP_GLTF_Loader::loadMesh(const GLTF_Handle mesh_idx)
     loadNode(dummy_node);
 }
 
+static void
+sopConsolidatePoints(GU_Detail &detail, fpreal distance)
+{
+    // Consolidate points using GU_Snap
+    GU_Snap::PointSnapParms snap_parms;
+
+    GA_ElementGroup *output_grp = UTverify_cast<GA_ElementGroup *>(
+            detail.getElementGroupTable(GA_ATTRIB_POINT).newInternalGroup());
+
+    snap_parms.myConsolidate = true;
+    snap_parms.myDeleteConsolidated = true;
+    snap_parms.myDistance = distance;
+    snap_parms.myModifyBothQueryAndTarget = true;
+    snap_parms.myQPosH.bind(&detail, GA_ATTRIB_POINT, GA_Names::P);
+    snap_parms.myTPosH.bind(&detail, GA_ATTRIB_POINT, GA_Names::P);
+    snap_parms.myOutputGroup = output_grp;
+    snap_parms.myMatchTol = 0.f;
+    snap_parms.myMismatch = false;
+    GU_Snap::snapPoints(detail, nullptr, snap_parms);
+    GA_PrimitiveGroup prim_grp(detail);
+    prim_grp.combine(output_grp);
+    detail.cleanData(&prim_grp, false, 0.001F, true, true, true);
+    detail.bumpDataIdsForAddOrRemove(true, false, false);
+    detail.destroyGroup(output_grp);
+}
+
 void
 SOP_GLTF_Loader::loadNode(const GLTF_Node &node)
 {
@@ -619,6 +649,12 @@ SOP_GLTF_Loader::loadNode(const GLTF_Node &node)
     }
 
     loadNodeRecursive(node, myDetail, UT_Matrix4F(1));
+
+    if (myOptions.promotePointAttribs && !myOptions.consolidateByMesh)
+    {
+	// Consolidate points of the full detail
+        sopConsolidatePoints(*myDetail, myOptions.pointConsolidationDistance);
+    }
 }
 
 void
@@ -860,6 +896,7 @@ SOP_GLTF_Loader::getGeoOptions() const
     GLTF_NAMESPACE::GLTF_MeshLoadingOptions options;
     options.loadCustomAttribs = myOptions.loadCustomAttribs;
     options.promotePointAttribs = myOptions.promotePointAttribs;
+    options.consolidatePoints = myOptions.consolidateByMesh;
     options.pointConsolidationDistance = myOptions.pointConsolidationDistance;
     return options;
 }

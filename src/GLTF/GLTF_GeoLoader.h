@@ -1,5 +1,5 @@
 /*
- * Copyright (c) COPYRIGHTYEAR
+ * Copyright (c) 2020
  *	Side Effects Software Inc.  All rights reserved.
  *
  * Redistribution and use of Houdini Development Kit samples in source and
@@ -50,6 +50,7 @@ struct GLTF_API GLTF_MeshLoadingOptions
 {
     bool loadCustomAttribs = true;
     bool promotePointAttribs = true;
+    bool consolidatePoints = true;
     fpreal pointConsolidationDistance = 0.0001F;
 };
 
