@@ -1,8 +1,8 @@
 import json
 import os
 import hou
-import string
 import struct
+import sys
 import tempfile
 import base64
 import _gltf_hom_extensions as _gltf
@@ -11,7 +11,11 @@ try:
     from hou import ui
 except:
     ui = None
-
+    
+if sys.version_info.major >= 3:
+    translate_util = str
+else:
+    import string as translate_util
 
 ##############################################
 # General utils
@@ -29,12 +33,11 @@ def _sanitizeName(name):
         return '_'
     global _sanitizeTable
     if not _sanitizeTable:
-        letters = ''.join([string.letters, string.digits, '_'])
         # Full alphabet
         alpha = ''.join(map(chr, range(256)))
         xlate = ''.join(map(valid, range(256)))
-        _sanitizeTable = string.maketrans(alpha, xlate)
-    name = string.translate(name, _sanitizeTable)
+        _sanitizeTable = translate_util.maketrans(alpha, xlate)
+    name = translate_util.translate(name, _sanitizeTable)
     if name[0].isdigit():
         name = '_' + name
     return name

@@ -15,4 +15,15 @@ opuserdata -n '___Version___' -v '' $arg1
 
 opcf $arg1
 
+# Node matnet1 (Object/matnet)
+opadd -e -n matnet matnet1
+oplocate -x 0 -y 0 matnet1
+opspareds "" matnet1
+opparm -V 18.5.402 matnet1
+chlock matnet1 -*
+chautoscope matnet1 -*
+opset -d off -r off -h off -f off -y off -t off -l off -s off -u off -F on -c on -e on -b off matnet1
+opexprlanguage -s hscript matnet1
+opuserdata -n '___Version___' -v '18.5.402' matnet1
+
 opcf ..
