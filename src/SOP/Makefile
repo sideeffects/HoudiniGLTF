@@ -6,20 +6,19 @@ include ../CustomGLTF.global
 DSONAME = $(SOPLIB).$(EXT)
 
 # Custom GLTF library
-GHEADER = "../GLTF"
-GLIB = "../GLTF"
+CUSTOM_GLTF = ".."
 
 SOURCES = SOP_GLTF.C
 
 INCDIRS = \
-    -I$(GHEADER) \
+    -I$(CUSTOM_GLTF) \
     -I$(HFS)/toolkit/include
 
 ifdef WINDOWS
-LIBDIRS += -LIBPATH:$(GLIB)
+LIBDIRS += -LIBPATH:$(CUSTOM_GLTF)/GLTF
 LIBS += lib$(GLTFLIB).lib
 else
-LIBDIRS += -L$(GLIB)
+LIBDIRS += -L$(CUSTOM_GLTF)/GLTF
 LIBS += -l$(GLTFLIB)
 endif
 

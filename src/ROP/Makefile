@@ -6,8 +6,7 @@ include ../CustomGLTF.global
 DSONAME = $(ROPLIB).$(EXT)
 
 # Custom GLTF library
-GHEADER = "../GLTF"
-GLIB = "../GLTF"
+CUSTOM_GLTF = ".."
 
 SOURCES = \
 	ROP_GLTF.C \
@@ -16,14 +15,14 @@ SOURCES = \
     ROP_GLTF_Refiner.C
 
 INCDIRS = \
-    -I$(GHEADER) \
+    -I$(CUSTOM_GLTF) \
     -I$(HFS)/toolkit/include
 
 ifdef WINDOWS
-LIBDIRS += -LIBPATH:$(GLIB)
+LIBDIRS += -LIBPATH:$(CUSTOM_GLTF)/GLTF
 LIBS += lib$(GLTFLIB).lib
 else
-LIBDIRS += -L$(GLIB)
+LIBDIRS += -L$(CUSTOM_GLTF)/GLTF
 LIBS += -l$(GLTFLIB)
 endif
 
