@@ -6,21 +6,20 @@ include ../CustomGLTF.global
 DSONAME = $(HOM_LIB).$(EXT)
 
 # Custom GLTF library
-GHEADER = "../GLTF"
-GLIB = "../GLTF"
+CUSTOM_GLTF = ".."
 
 SOURCES = HOM_GLTF.C
 
 INCDIRS = \
-	-I$(GHEADER) \
+	-I$(CUSTOM_GLTF) \
 	-I$(HFS)/toolkit/include \
     -I$(HFS)/python27/include
 
 ifdef WINDOWS
-LIBDIRS += -LIBPATH:$(GLIB) -LIBPATH:$(HFS)/python27/libs
+LIBDIRS += -LIBPATH:$(CUSTOM_GLTF)/GLTF -LIBPATH:$(HFS)/python27/libs
 LIBS += lib$(GLTFLIB).lib
 else
-LIBDIRS += -L$(GLIB) -L$(HFS)/python27/libs
+LIBDIRS += -L$(CUSTOM_GLTF)/GLTF -L$(HFS)/python27/libs
 LIBS += -l$(GLTFLIB)
 endif
 
