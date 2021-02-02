@@ -5,6 +5,9 @@ include ../CustomGLTF.global
 
 DSONAME = lib$(GLTFLIB).$(EXT)
 
+# Custom GLTF library
+CUSTOM_GLTF = ".."
+
 SOURCES = \
     GLTF_Cache.C \
     GLTF_Loader.C \
@@ -13,7 +16,8 @@ SOURCES = \
     GLTF_Util.C
 
 INCDIRS = \
-	-I$(HFS)/toolkit/include
+    -I$(CUSTOM_GLTF) \
+    -I$(HFS)/toolkit/include
 
 include $(HFS)/toolkit/makefiles/Makefile.gnu
 
