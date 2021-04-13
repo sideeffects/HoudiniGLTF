@@ -1148,7 +1148,7 @@ newDriverOperator(OP_OperatorTable *table)
                         CUSTOM_GLTF_TOKEN_PREFIX "gltf", 
                         CUSTOM_GLTF_LABEL_PREFIX "GLTF", 
                         ROP_GLTF::myConstructor, &templatepair,
-                        0, 0, &vp, OP_FLAG_GENERATOR);
+                        0, 9999, &vp, OP_FLAG_UNORDERED | OP_FLAG_GENERATOR);
     gltf_op->setIconName("OBJ_gltf_hierarchy");
     table->addOperator(gltf_op);
 }
