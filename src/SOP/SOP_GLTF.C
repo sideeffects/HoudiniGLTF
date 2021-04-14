@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020
+ * Copyright (c) 2021
  *	Side Effects Software Inc.  All rights reserved.
  *
  * Redistribution and use of Houdini Development Kit samples in source and
@@ -104,7 +104,9 @@ selectGLTFScenes(void *data, int index, fpreal t, const PRM_Template *tplate)
             name = scene_name;
 
         cmd.strcat(" ");
+        cmd.strcat("'");
         cmd.strcat(name);
+        cmd.strcat("'");
     }
 
     CMD_Manager *mgr = CMDgetManager();
@@ -145,7 +147,9 @@ selectGLTFMeshes(void *data, int index, fpreal t, const PRM_Template *tplate)
             name = mesh_name.first;
 
         cmd.strcat(" ");
+        cmd.strcat("'");
         cmd.strcat(name);
+        cmd.strcat("'");
     }
 
     CMD_Manager *mgr = CMDgetManager();
@@ -188,7 +192,9 @@ selectGLTFNodes(void *data, int index, fpreal t, const PRM_Template *tplate)
             name = node_name;
 
         cmd.strcat(" ");
+        cmd.strcat("'");
         cmd.strcat(name);
+        cmd.strcat("'");
     }
 
     CMD_Manager *mgr = CMDgetManager();
