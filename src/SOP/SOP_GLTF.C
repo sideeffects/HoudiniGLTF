@@ -57,8 +57,9 @@
 using namespace GLTF_NAMESPACE;
 
 //-*****************************************************************************
-constexpr const char *GLTF_NAME_ATTRIB = "name";
-constexpr const char *GLTF_SCENE_NAME_ATTRIB = "scene_name";
+constexpr const char* GLTF_NAME_ATTRIB = "name";
+constexpr const char* GLTF_SCENE_NAME_ATTRIB = "scene_name";
+constexpr const char* GLTF_PATH_ATTRIB = "path";
 
 static std::string
 sopGetRealFileName(const char *name)
@@ -242,6 +243,10 @@ static PRM_Name prm_pointConsolidateDistance("pointconsolidatedist", "Points Mer
 
 static PRM_Default prm_filenameDefault(0, "default.gltf");
 
+static PRM_Name prm_addPathAttribute("addpathattribute", "Add Path Attribute");
+static PRM_Name prm_pathAttribute("pathattribute", "Path Attribute");
+static PRM_Default prm_pathAttributeDefault(0, GLTF_PATH_ATTRIB);
+
 // Dropdown menus
 
 static PRM_Name prm_loadByOptions[] = {PRM_Name("primitive", "Primitive"),
@@ -284,8 +289,10 @@ PRM_Template SOP_GLTF::myTemplateList[] = {
     PRM_Template(PRM_FLT_J, 1, &prm_pointConsolidateDistance, &PRMfitToleranceDefault),
     PRM_Template(PRM_TOGGLE, 1, &prm_loadCustomAttribs, PRMoneDefaults),
     PRM_Template(PRM_TOGGLE, 1, &prm_LoadNames, PRMoneDefaults),
-
     PRM_Template(PRM_TOGGLE, 1, &prm_materialAssigns, PRMzeroDefaults),
+    PRM_Template(PRM_TOGGLE, PRM_TYPE_TOGGLE_JOIN, 1, &prm_addPathAttribute,
+                 PRMzeroDefaults),
+    PRM_Template(PRM_STRING, 1, &prm_pathAttribute, &prm_pathAttributeDefault),
 
     PRM_Template()};
 
@@ -318,6 +325,9 @@ SOP_GLTF::updateParmsFlags()
     changed |= enableParm("scene", loadStyle == GLTF_LoadStyle::Scene);
 
     changed |= enableParm("pointconsolidatedist", promotePointAttrs == 1);
+    changed |= enableParm("addpathattribute",
+        loadStyle == GLTF_LoadStyle::Scene || loadStyle == GLTF_LoadStyle::Node);
+    changed |= enableParm("pathattribute", parms.myAddPathAttribute);
 
     return changed;
 }
@@ -359,6 +369,8 @@ SOP_GLTF::cookMySop(OP_Context &context)
                                 || parms.myLoadStyle
                                            == GLTF_LoadStyle::Primitive;
     options.pointConsolidationDistance = parms.myPointConsolidationDistance;
+    options.addPathAttribute = parms.myAddPathAttribute;
+    options.pathAttribute = parms.myPathAttribute;    
 
     if (getParent() && getParent()->getParent())
     {
@@ -377,7 +389,7 @@ SOP_GLTF::cookMySop(OP_Context &context)
         GLTF_Handle node = parms.myRootNode;
         if (node >= loader->getNumNodes())
         {
-            addError(SOP_MESSAGE, "Invaid Node");
+            addError(SOP_MESSAGE, "Invalid Node");
             return error();
         }
         sop_loader.loadNode(*loader->getNode(node));
@@ -387,7 +399,7 @@ SOP_GLTF::cookMySop(OP_Context &context)
         GLTF_Handle mesh = parms.myMeshID;
         if (mesh >= loader->getNumMeshes())
         {
-            addError(SOP_MESSAGE, "Invaid Mesh");
+            addError(SOP_MESSAGE, "Invalid Mesh");
             return error();
         }
         sop_loader.loadMesh(mesh);
@@ -463,8 +475,6 @@ newSopOperator(OP_OperatorTable *table)
 }
 
 //////////////////////////////////////////////////////////
-
-SOP_GLTF::Parms::Parms() {}
 
 void
 SOP_GLTF::saveMeshNames(const GLTF_NAMESPACE::GLTF_Loader &loader)
@@ -605,6 +615,16 @@ SOP_GLTF::evaluateParms(Parms &parms, OP_Context &context)
         parms.myGeoType = GLTF_GeoType::Packed_Primitives;
     else
         UT_ASSERT(false);
+
+    if (l_type == "scene" || l_type == "node")
+    {
+        parms.myAddPathAttribute = evalInt("addpathattribute", 0, t);
+        evalString(parms.myPathAttribute, "pathattribute", 0, t);
+    }
+    else
+    {
+        parms.myAddPathAttribute = false;
+    }
 }
 
 SOP_GLTF_Loader::SOP_GLTF_Loader(const GLTF_NAMESPACE::GLTF_Loader &loader, GU_Detail *detail,
@@ -655,7 +675,8 @@ SOP_GLTF_Loader::loadNode(const GLTF_Node &node)
         myDetail->addStringTuple(GA_ATTRIB_PRIMITIVE, GLTF_NAME_ATTRIB, 1);
     }
 
-    loadNodeRecursive(node, myDetail, UT_Matrix4F(1));
+    UT_WorkBuffer path_attrib;
+    loadNodeRecursive(node, myDetail, UT_Matrix4F(1), path_attrib);
 
     if (myOptions.promotePointAttribs && !myOptions.consolidateByMesh)
     {
@@ -737,7 +758,7 @@ SOP_GLTF_Loader::loadPrimitive(GLTF_Handle node_idx, GLTF_Handle prim_idx)
 
 void
 SOP_GLTF_Loader::loadNodeRecursive(const GLTF_Node &node, GU_Detail *parent_gd,
-                                   UT_Matrix4F cum_xform)
+    UT_Matrix4F cum_xform, UT_WorkBuffer parent_path_attrib)
 {
     UTgetInterrupt()->opInterrupt();
 
@@ -750,8 +771,18 @@ SOP_GLTF_Loader::loadNodeRecursive(const GLTF_Node &node, GU_Detail *parent_gd,
     GU_Detail *gd;
     GA_RWHandleS name_attr;
     GA_RWHandleS mat_attr;
+    GA_RWHandleS path_attr;
 
     GU_DetailHandle gdh;
+
+    UT_WorkBuffer my_path_attrib = parent_path_attrib;
+    if (myOptions.addPathAttribute)
+    {
+        if (!my_path_attrib.isEmpty())
+           my_path_attrib.append("/");
+
+        my_path_attrib.append(node.name);
+    }
 
     if (!myOptions.flatten)
     {
@@ -760,13 +791,13 @@ SOP_GLTF_Loader::loadNodeRecursive(const GLTF_Node &node, GU_Detail *parent_gd,
 
         if (myOptions.loadNames)
         {
-            name_attr =
-                gd->addStringTuple(GA_ATTRIB_PRIMITIVE, GLTF_NAME_ATTRIB, 1);
+            name_attr = gd->addStringTuple(GA_ATTRIB_PRIMITIVE,
+                GLTF_NAME_ATTRIB, 1);
         }
-        if (myOptions.loadNames)
+        if (myOptions.loadMats)
         {
-            name_attr =
-                gd->addStringTuple(GA_ATTRIB_PRIMITIVE, GA_Names::shop_materialpath, 1);
+            mat_attr = gd->addStringTuple(GA_ATTRIB_PRIMITIVE,
+                GA_Names::shop_materialpath, 1);
         }
     }
     else
@@ -774,7 +805,6 @@ SOP_GLTF_Loader::loadNodeRecursive(const GLTF_Node &node, GU_Detail *parent_gd,
 	gd = parent_gd;
     }
 
-    // Now flatten all the submeshes
     if (node.mesh != GLTF_INVALID_IDX)
     {
         const GLTF_Mesh &mesh = *myLoader.getMesh(node.mesh);
@@ -793,7 +823,8 @@ SOP_GLTF_Loader::loadNodeRecursive(const GLTF_Node &node, GU_Detail *parent_gd,
 		getMaterialPath(primitive.material, mat_path);
 	    }
 
-            if (!GLTF_GeoLoader::load(myLoader, node.mesh, idx, *prim_gd, getGeoOptions()))
+            if (!GLTF_GeoLoader::load(myLoader, node.mesh, idx, *prim_gd,
+                    getGeoOptions(my_path_attrib.buffer())))
             {
                 prim_gdh.unlock(prim_gd);
                 continue;
@@ -814,8 +845,15 @@ SOP_GLTF_Loader::loadNodeRecursive(const GLTF_Node &node, GU_Detail *parent_gd,
                 
 		if (myOptions.loadMats)
 		{
-                    name_attr.set(packed->getPointOffset(0), 0, mat_path);
+                    mat_attr.set(packed->getPointOffset(0), 0, mat_path);
 		}
+                
+                if (myOptions.addPathAttribute)
+                {
+                    UT_StringHolder the_path_attrib(my_path_attrib);
+                    packed->setPathAttribute(the_path_attrib,
+                        myOptions.pathAttribute);
+                }
             }
             // Else load as a flattened hiereachy
             else
@@ -855,7 +893,8 @@ SOP_GLTF_Loader::loadNodeRecursive(const GLTF_Node &node, GU_Detail *parent_gd,
     // Now run this on all children with the new transform
     for (GLTF_Handle child : node.children)
     {
-        loadNodeRecursive(*myLoader.getNode(child), gd, cum_xform);
+        loadNodeRecursive(*myLoader.getNode(child), gd, cum_xform,
+            my_path_attrib);
     }
 
     if (!myOptions.flatten)
@@ -876,35 +915,30 @@ SOP_GLTF_Loader::loadNodeRecursive(const GLTF_Node &node, GU_Detail *parent_gd,
                 pname_attrib.set(packed->getPointOffset(0), 0, node.name);
         }
 
+        if (myOptions.addPathAttribute)
+        {
+            UT_StringHolder the_path_attrib(my_path_attrib);
+            packed->setPathAttribute(the_path_attrib, myOptions.pathAttribute);
+        }
+
         gdh.unlock(gd);
     }
 }
 
-void
-SOP_GLTF_Loader::createAndSetName(GU_Detail *detail, const char *name) const
-{
-    // Add the GLTF named as a primitive attribute to the flattened objects
-    GA_RWAttributeRef str_attrib =
-        detail->addStringTuple(GA_ATTRIB_PRIMITIVE, GLTF_NAME_ATTRIB, 1);
-    GA_RWHandleS str_attrib_handle(str_attrib.getAttribute());
-    if (str_attrib_handle.isValid())
-    {
-        // Set the attrib for all primitives
-        for (GA_Iterator it(detail->getPrimitiveRange()); !it.atEnd(); ++it)
-        {
-            str_attrib_handle.set(*it, 0, name);
-        }
-    }
-}
-
 GLTF_NAMESPACE::GLTF_MeshLoadingOptions
-SOP_GLTF_Loader::getGeoOptions() const
+SOP_GLTF_Loader::getGeoOptions(const char* pathAttributeValue) const
 {
     GLTF_NAMESPACE::GLTF_MeshLoadingOptions options;
     options.loadCustomAttribs = myOptions.loadCustomAttribs;
     options.promotePointAttribs = myOptions.promotePointAttribs;
     options.consolidatePoints = myOptions.consolidateByMesh;
     options.pointConsolidationDistance = myOptions.pointConsolidationDistance;
+    options.addPathAttribute = myOptions.addPathAttribute;
+    options.pathAttributeName = myOptions.pathAttribute;
+    
+    if (pathAttributeValue)
+        options.pathAttributeValue = pathAttributeValue;
+
     return options;
 }
 //

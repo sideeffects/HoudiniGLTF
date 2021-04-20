@@ -12,91 +12,101 @@ See the following link for further information about the [glTF format|https://ww
 @parameters
 
 File Name:
-	#id: filename
+    #id: filename
 
-	Load this glTF file.  The loading method depends on the extension of the file loaded.  
+    Load this glTF file.  The loading method depends on the extension of the file loaded.  
 	
-	Files with a `.glb` extension are treated as binary GLB files.
+    Files with a `.glb` extension are treated as binary GLB files.
 	
-	Files with a `.gltf` extension are treated as normal JSON data.
+    Files with a `.gltf` extension are treated as normal JSON data.
 
 Load By:
-	#id: loadby
+    #id: loadby
 
-	Use this type of glTF object to use as the root of the imported data.
+    Use this type of glTF object to use as the root of the imported data.
 
-	Primitive:
-		Load the geometry from the selected primitive.  Transforms or names are not preserved.
+    Primitive:
+            Load the geometry from the selected primitive.  Transforms or names are not preserved.
 
-	Node:
-		Load the geometry from the selected node.  Hierarchy, names, and transforms are represented as packed primitives.
+    Node:
+            Load the geometry from the selected node.  Hierarchy, names, and transforms are represented as packed primitives.
 
-	Scene:
-		Load the geometry from the selected scene.  Hierarchy, names, and transforms are represented as packed primitives.
+    Scene:
+            Load the geometry from the selected scene.  Hierarchy, names, and transforms are represented as packed primitives.
 		
 Mesh ID:
-	#id: meshid
+    #id: meshid
 
-	Load geometry data from the mesh at this index of the glTF mesh array.
+    Load geometry data from the mesh at this index of the glTF mesh array.
 
 Primitive Index:
-	#id: primitiveIndex
+    #id: primitiveIndex
 
-	Load geometry data from the primitive at this index of the mesh's primitive array.
+    Load geometry data from the primitive at this index of the mesh's primitive array.
 
 Root Node:
-	#id: nodeid
+    #id: nodeid
 
-	Load the node at this index of the glTF node array.  Additionally, load all descendent nodes.  
+    Load the node at this index of the glTF node array.  Additionally, load all descendent nodes.  
 
 Scene:
-	#id: scene
+    #id: scene
 
-	Load all nodes in the scene at this index of the glTF scene array.
+    Load all nodes in the scene at this index of the glTF scene array.
 
 Geometry Type:
-	#id: geotype
+    #id: geotype
 
-	Store glTF geometry data in this type of object.
+    Store glTF geometry data in this type of object.
 
-	Flattened Geometry:
-		Store the geometry as flat Houdini geometry.  Transforms and hierarchy are baked in and not stored.  Names are represented by primitive attributes and are only stored for meshes, not internal nodes.
+    Flattened Geometry:
+            Store the geometry as flat Houdini geometry.  Transforms and hierarchy are baked in and not stored.  Names are represented by primitive attributes and are only stored for meshes, not internal nodes.
 
-	Packed Primitive:
-		Load the geometry as a hierarchy of packed primitives.  Hierarchy, names, and transforms are represented as attributes on the packed primitives.
+    Packed Primitive:
+            Load the geometry as a hierarchy of packed primitives.  Hierarchy, names, and transforms are represented as attributes on the packed primitives.
 
 Promote Point Attributes To Vertex:
-	#id: promotepointattrs
+    #id: promotepointattrs
 
-	Promote all point attributes (excluding P) to vertex attributes.
+    Promote all point attributes (excluding P) to vertex attributes.
 
 Points Merge Distance:
-	#id: pointconsolidatedist
+    #id: pointconsolidatedist
 
-	When __Promote Point Attributes To Vertex__ is enabled, points within this distance to each other will be merged.
+    When __Promote Point Attributes To Vertex__ is enabled, points within this distance to each other will be merged.
 
 Import Custom Attributes:
-	#id: usecustomattribs
+    #id: usecustomattribs
 
-	Enable this option to load all custom attributes from imported primitives.  
-	
-	Custom attributes in glTF are prefixed with an underscore `_`, which will be stripped during the import process. 
+    Enable this option to load all custom attributes from imported primitives.  
+    
+    Custom attributes in glTF are prefixed with an underscore `_`, which will be stripped during the import process. 
 
 Import Names:
-	#id: loadnames
+    #id: loadnames
 
-	Assigns node, scene, and mesh names as attributes on the imported geometry.
+    Assigns node, scene, and mesh names as attributes on the imported geometry.
 
-	The scene name is assigned to the `scene_name` detail attribute.
+    The scene name is assigned to the `scene_name` detail attribute.
 
-	Node and mesh names are assigned to the `name` attribute on imported packed primitives.
+    Node and mesh names are assigned to the `name` attribute on imported packed primitives.
 
 Import Material Assignments:
-	#id: materialassignments
+    #id: materialassignments
 
-	Assigns materials as primitive attributes to the imported geometry.
+    Assigns materials as primitive attributes to the imported geometry.
 
-	Assignments point to the `../../materials/` path.
-	
-	If the material name is unique, the assigned material name will simply be the name of the glTF material.
-	When the name is non_unique, the name will be of the format `Material_i`, where `i` is the index of the material in the glTF global materials array.  If the material is nameless, the name will simply be `_i`, where i is again the index.
+    Assignments point to the `../../materials/` path.
+    
+    If the material name is unique, the assigned material name will simply be the name of the glTF material.
+    When the name is non_unique, the name will be of the format `Material_i`, where `i` is the index of the material in the glTF global materials array.  If the material is nameless, the name will simply be `_i`, where i is again the index.
+
+Add Path Attribute:
+    #id: addpathattribute
+
+    When this toggle is enabled, a primitive attribute will be added to the geometry which records the GLTF node hierarchy for each primitive.
+
+Path Attribute:
+    #id: pathattribute
+
+    This parameter controls the name of the primitive attribute when *Add Path Attribute* is enabled.

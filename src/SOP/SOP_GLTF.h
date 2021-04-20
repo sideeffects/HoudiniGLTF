@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020
+ * Copyright (c) 2021
  *        Side Effects Software Inc.  All rights reserved.
  *
  * Redistribution and use of Houdini Development Kit samples in source and
@@ -34,6 +34,7 @@
 #include <GLTF/GLTF_Types.h>
 #include <UT/UT_Array.h>
 #include <UT/UT_Interrupt.h>
+#include <UT/UT_WorkBuffer.h>
 #include <utility>
 
 class GU_Detail;
@@ -90,11 +91,8 @@ protected:
 private:
     void saveMeshNames(const GLTF_NAMESPACE::GLTF_Loader &loader);
 
-    class Parms
+    struct Parms
     {
-    public:
-        Parms();
-
         UT_String myFileName;
         GLTF_LoadStyle myLoadStyle;
         GLTF_GeoType myGeoType;
@@ -107,6 +105,8 @@ private:
         uint32 myLoadMats;
         uint32 myPromotePointAttrsToVertex;
         fpreal myPointConsolidationDistance;
+        bool myAddPathAttribute;
+        UT_StringHolder myPathAttribute;
     };
 
     void evaluateParms(Parms &parms, OP_Context &context);
@@ -132,6 +132,8 @@ public:
         bool promotePointAttribs = true;
         bool consolidateByMesh = true;
         fpreal pointConsolidationDistance = 0.0001F;
+        bool addPathAttribute = true;
+        UT_StringHolder pathAttribute;
     };
 
     SOP_GLTF_Loader(const GLTF_NAMESPACE::GLTF_Loader &loader, GU_Detail *detail,
@@ -148,10 +150,11 @@ private:
     // Puts the current node in parent_gd as a packed primitive
     // with the name as well as transforms
     void loadNodeRecursive(const GLTF_Node &node, GU_Detail *parent_gd,
-                           UT_Matrix4F cum_xform);
+                           UT_Matrix4F cum_xform,
+                           UT_WorkBuffer parent_path_attrib);
 
-    void createAndSetName(GU_Detail *detail, const char *name) const;
-    GLTF_NAMESPACE::GLTF_MeshLoadingOptions getGeoOptions() const;
+    GLTF_NAMESPACE::GLTF_MeshLoadingOptions getGeoOptions(
+        const char* pathAttributeValue = nullptr) const;
 
     const GLTF_NAMESPACE::GLTF_Loader &myLoader;
     GU_Detail *myDetail;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020
+ * Copyright (c) 2021
  *       Side Effects Software Inc.  All rights reserved.
  *
  * Redistribution and use of Houdini Development Kit samples in source and
@@ -238,6 +238,25 @@ GLTF_GeoLoader::loadIntoDetail(GU_Detail &detail)
                     GU_Detail::ONLYCONS_GRP_PROP_LEAST, true);
 	}
         
+    }
+
+    if (myOptions.addPathAttribute)
+    {
+        GA_Attribute* path_attr = detail.findStringTuple(GA_ATTRIB_PRIMITIVE,
+            myOptions.pathAttributeName);
+        if (!path_attr)
+        {
+            path_attr = detail.addStringTuple(GA_ATTRIB_PRIMITIVE,
+                myOptions.pathAttributeName, 1);
+            if (path_attr)
+            {
+                GA_RWHandleS ah(path_attr);
+                UT_StringHolder path(myOptions.pathAttributeValue);
+                detail.forEachPrimitive([&ah, &path](GA_Offset primoff) {
+                    ah.set(primoff, path);
+                });
+            }
+        }
     }
 
     return true;
