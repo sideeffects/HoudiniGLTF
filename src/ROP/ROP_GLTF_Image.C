@@ -75,6 +75,9 @@ ROP_GLTF_Image::OutputImageToStream(const UT_String &filename,
     file_parms.setDataType(theWorkFormat::img_data_format);
     file_parms.setOption("quality", std::to_string(parms.quality).c_str());
 
+    if (!format->formatStoresColorSpace())
+        file_parms.adjustGammaForFormat(stat, format, IMG_DT_ANY);
+
     IMG_File *file = IMG_File::create(os, stat, &file_parms, format);
 
     if (!file)
@@ -157,14 +160,29 @@ ROP_GLTF_Image::CreateMappedTexture(
     for (auto it = rasters.begin(); it != rasters.end(); it++)
     {
         const UT_Array<UT_SharedPtr<PXL_Raster>> &planes = *it;
-	if (planes.size() == 0 ||
-	    planes[0]->getPacking() != PACK_RGB)
-	{
-	    continue;
-	}
+        if (planes.size() == 0 ||
+            planes[0]->getPacking() != PACK_RGB)
+        {
+            continue;
+        }
 
-	auto from_channel = mappings[idx].from_channel;
-	auto to_channel = mappings[idx].to_channel;
+        if (new_raster->getColorSpace() == PXL_CS_UNKNOWN)
+        {
+            new_raster->setColorSpace(planes[0]->getColorSpace(), planes[0]->getColorSpaceGamma());
+        }
+        else if (new_raster->getColorSpace() != planes[0]->getColorSpace() || new_raster->getColorSpaceGamma() != planes[0]->getColorSpaceGamma())
+        {
+            UT_String error;
+            error.sprintf("Color space and/or gamma mismatch: %s (%f) and %s (%f)!",
+                PXLgetColorSpaceName(new_raster->getColorSpace()),
+                new_raster->getColorSpaceGamma(),
+                PXLgetColorSpaceName(planes[0]->getColorSpace()),
+                planes[0]->getColorSpaceGamma());
+            errormgr.AddError(UT_ERROR_MESSAGE, error);
+        }
+
+        auto from_channel = mappings[idx].from_channel;
+        auto to_channel = mappings[idx].to_channel;
 
         fill_parms.mySource = planes[0]->getPixel(0, 0, from_channel);
         fill_parms.myDest = new_raster->getPixel(0, 0, to_channel);
@@ -179,6 +197,9 @@ ROP_GLTF_Image::CreateMappedTexture(
         return false;
 
     IMG_Stat stat(xres, yres, theWorkFormat::img_data_format, IMG_RGB);
+
+    // Propagate color space and gamma from raster to the only plane
+    stat.getPlane(0)->setColorSpace(new_raster->getColorSpace(), new_raster->getColorSpaceGamma());
 
     // Apply transformations
     UT_Array<UT_SharedPtr<PXL_Raster>> planes { new_raster };
@@ -197,6 +218,9 @@ ROP_GLTF_Image::CreateMappedTexture(
     file_parms.setInterleaved(IMG_INTERLEAVED);
     file_parms.setDataType(theWorkFormat::img_data_format);
     file_parms.setOption("quality", std::to_string(parms.quality).c_str());
+
+    if (!format->formatStoresColorSpace())
+        file_parms.adjustGammaForFormat(stat, format, IMG_DT_ANY);
 
     file = IMG_File::create(os, stat, &file_parms, format);
 
@@ -375,19 +399,21 @@ ROP_GLTF_Image::GetImageRastersFromCOP(
     if (color_plane)
     {
         color_raster = UT_SharedPtr<TIL_Raster>(
-	    new TIL_Raster(pxl_model,
-                           theWorkFormat::px_data_format, xres, yres),
-			   [=](TIL_Raster *r){}
-	    );
+            new TIL_Raster(pxl_model, theWorkFormat::px_data_format, xres, yres),
+            [=](TIL_Raster *r){}
+        );
 
-	// Pack both A and C planes into a single raster
-	if (!is->getImage(color_raster.get(), time, xres, yres, *color_plane, 0,
-	    0, 0, xres-1 , yres -1, 1.0, true))
-	{
-	    return false;
-	}
-	
-	rasters.append(color_raster);
+        // Pack both A and C planes into a single raster
+        if (!is->getImage(color_raster.get(), time, xres, yres, *color_plane, 0,
+            0, 0, xres-1 , yres -1, 1.0, true))
+        {
+            return false;
+        }
+
+        // Propagate color space and gamma from raster to the only plane
+        stat.getPlane(0)->setColorSpace(color_raster->getColorSpace(), color_raster->getColorSpaceGamma());
+
+        rasters.append(color_raster);
     }
 
     return true;
@@ -410,12 +436,12 @@ ROP_GLTF_Image::ApplyTransformations(
                 continue;
             }
 
-	    exint inc = 1;
+            exint inc = 1;
             if (packing == PACK_RGB)
                 inc = 3;
             else if (packing == PACK_RGBA)
                 inc = 4;
-	    // Otherwise the raster is interleaved so the increment is 1
+            // Otherwise the raster is interleaved so the increment is 1
 
             PXL_FillParms fill_parms;
             fill_parms.setDestType(raster->getFormat());
@@ -432,10 +458,11 @@ ROP_GLTF_Image::ApplyTransformations(
     if (parms.roundUpPowerOfTwo || xres > parms.max_res || yres > parms.max_res)
     {
         xres = std::min(NextPowerOfTwo(xres), parms.max_res);
-	yres = std::min(NextPowerOfTwo(yres), parms.max_res);
+        yres = std::min(NextPowerOfTwo(yres), parms.max_res);
         for (exint idx = 0; idx < rasters.size(); idx++)
         {
             auto dest = UT_SharedPtr<PXL_Raster>(new PXL_Raster());
+            dest->setColorSpace(rasters[idx]->getColorSpace(), rasters[idx]->getColorSpaceGamma());
             TIL_Raster::scaleRasterToSize(dest.get(), rasters[idx].get(), xres, yres);
             rasters[idx] = dest;
         }
