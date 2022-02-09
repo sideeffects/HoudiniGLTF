@@ -614,7 +614,22 @@ ROP_GLTF::TranslatePrincipledShader(const OP_Context &context,
         const PRM_Parm &mat_parm = ps_node->getParm("basecolor");
         fpreal32 color[3];
         mat_parm.getValues(context.getTime(), color, SYSgetSTID());
-        metallic_roughness.baseColorFactor = UT_Vector4F(color, 1.0f);
+
+        // In addition to color, get the alpha value based on 'Transparency' parm
+        const PRM_Parm &transparency_parm = ps_node->getParm("transparency");
+        fpreal transparency;
+        transparency_parm.getValue(context.getTime(), transparency, 0,
+                                SYSgetSTID());
+
+        fpreal opacity = 1.0 - transparency;
+
+        fpreal baseColorFactor[4];
+        baseColorFactor[0] = color[0];
+        baseColorFactor[1] = color[1];
+        baseColorFactor[2] = color[2];
+        baseColorFactor[3] = opacity;
+
+        metallic_roughness.baseColorFactor = UT_Vector4F(baseColorFactor);
     }
 
     int basecolor_use_texture = 0;
